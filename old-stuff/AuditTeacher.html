@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Audit Reports — Harvest International School</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:"DM Sans",sans-serif;background:#0a1a0a;min-height:100vh;color:#fff;overflow-x:hidden;}
+body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:radial-gradient(ellipse 70% 50% at 15% 5%,rgba(41,171,226,0.10) 0%,transparent 55%),
+             radial-gradient(ellipse 50% 40% at 85% 90%,rgba(45,106,45,0.14) 0%,transparent 55%),
+             linear-gradient(170deg,#0a1a0a 0%,#0f2410 50%,#0a1a0a 100%);}
+
+/* ── HEADER ── */
+.hdr{background:linear-gradient(135deg,#0a1a0a,#0f2410);border-bottom:2px solid #2D6A2D;
+  padding:12px 20px;position:sticky;top:0;z-index:50;box-shadow:0 4px 20px rgba(0,0,0,0.5);}
+.hdr-inner{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;}
+.hdr-left{display:flex;align-items:center;gap:10px;}
+.hdr-school{font-family:"DM Serif Display",serif;font-size:14px;color:#29ABE2;line-height:1.2;}
+.hdr-sub{font-size:9px;color:rgba(255,255,255,0.4);margin-top:2px;letter-spacing:0.07em;text-transform:uppercase;}
+.hdr-right{display:flex;align-items:center;gap:8px;}
+.teacher-chip{background:rgba(45,106,45,0.25);border:1px solid rgba(45,106,45,0.5);
+  border-radius:30px;padding:5px 12px;font-size:11px;color:#7fff7f;font-weight:600;
+  max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.btn-logout{background:rgba(232,64,28,0.15);border:1px solid rgba(232,64,28,0.38);
+  border-radius:30px;padding:6px 14px;font-family:"DM Sans",sans-serif;
+  font-size:11px;font-weight:600;color:#E8401C;cursor:pointer;white-space:nowrap;transition:all 0.2s;}
+.btn-logout:hover{background:rgba(232,64,28,0.28);}
+
+/* ── BODY ── */
+.body{max-width:580px;margin:0 auto;padding:24px 16px 60px;position:relative;z-index:1;}
+
+/* ── GREETING ── */
+.greeting{margin-bottom:24px;}
+.greeting-hi{font-family:"DM Serif Display",serif;font-size:24px;color:#fff;line-height:1.2;}
+.greeting-sub{font-size:13px;color:rgba(255,255,255,0.45);margin-top:6px;}
+
+/* ── STATES ── */
+.msg{text-align:center;padding:48px 20px;color:rgba(255,255,255,0.4);font-size:14px;}
+.spinner{display:inline-block;width:24px;height:24px;border:3px solid rgba(41,171,226,0.2);
+  border-top-color:#29ABE2;border-radius:50%;animation:spin 0.7s linear infinite;vertical-align:middle;margin-right:8px;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.no-data{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);
+  border-radius:14px;padding:36px 24px;text-align:center;}
+.no-data-icon{font-size:36px;margin-bottom:12px;opacity:0.5;}
+.no-data-title{font-family:"DM Serif Display",serif;font-size:18px;color:rgba(255,255,255,0.6);margin-bottom:6px;}
+.no-data-sub{font-size:13px;color:rgba(255,255,255,0.3);line-height:1.6;}
+.section-label{font-size:11px;font-weight:700;text-transform:uppercase;
+  letter-spacing:0.09em;color:rgba(255,255,255,0.3);margin-bottom:12px;}
+
+/* ── AUDIT BUTTON ── */
+.audit-list{display:flex;flex-direction:column;gap:10px;}
+.audit-btn{background:rgba(248,253,248,0.97);border-radius:14px;border:2px solid rgba(45,106,45,0.2);
+  padding:14px 16px;cursor:pointer;transition:all 0.2s;text-align:left;width:100%;
+  display:flex;align-items:center;gap:12px;font-family:"DM Sans",sans-serif;}
+.audit-btn:hover{border-color:#29ABE2;box-shadow:0 4px 20px rgba(0,0,0,0.3);transform:translateY(-1px);}
+.audit-btn:active{transform:scale(0.99);}
+.audit-score-circle{width:56px;height:56px;border-radius:50%;flex-shrink:0;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;}
+.asc-num{font-family:"DM Serif Display",serif;font-size:19px;line-height:1;color:inherit;}
+.asc-den{font-size:9px;opacity:0.65;margin-top:1px;color:inherit;}
+.band-dist{background:linear-gradient(135deg,#1a4a1a,#2D6A2D);color:#7fff7f;}
+.band-prof{background:linear-gradient(135deg,#1a3a5c,#2a5298);color:#90c8ff;}
+.band-dev {background:linear-gradient(135deg,#4a3a00,#7a6000);color:#ffe07a;}
+.band-beg {background:linear-gradient(135deg,#5a0a0a,#8a1a1a);color:#ff9090;}
+.audit-info{flex:1;min-width:0;}
+.audit-auditor{font-size:13px;font-weight:700;color:#1a2a1a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.audit-date{font-size:11px;color:#7a9a7a;margin-top:2px;}
+.audit-meta{display:flex;gap:6px;margin-top:5px;flex-wrap:wrap;align-items:center;}
+.audit-location{font-size:10px;font-weight:700;background:#e8f4fd;color:#1a4a6c;border-radius:6px;padding:2px 7px;}
+.audit-grade{font-size:10px;font-weight:600;background:#f0f6e8;color:#2a5a1a;border-radius:6px;padding:2px 7px;}
+.audit-subject{font-size:10px;font-weight:600;background:#f6f0f8;color:#5a2a7a;border-radius:6px;padding:2px 7px;}
+.audit-rating{font-size:9px;font-weight:700;padding:2px 7px;border-radius:10px;text-transform:uppercase;}
+.rt-dist{background:#e8f8e8;color:#1a5a1a;}
+.rt-prof{background:#e8f4fd;color:#1a4a6c;}
+.rt-dev {background:#fffbe8;color:#7a6000;}
+.rt-beg {background:#ffeee8;color:#8a2000;}
+.audit-arrow{font-size:18px;color:#c4d4c4;flex-shrink:0;}
+
+/* ── DRAWER ── */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:100;display:none;backdrop-filter:blur(4px);}
+.overlay.open{display:block;}
+.drawer{position:fixed;left:0;right:0;bottom:0;top:0;z-index:101;overflow-y:auto;
+  background:#0f2410;transform:translateY(100%);transition:transform 0.35s cubic-bezier(0.4,0,0.2,1);}
+.drawer.open{transform:translateY(0);}
+
+/* ── DRAWER HEADER ── */
+.dr-hdr{background:linear-gradient(135deg,#0a1a0a,#1a3a1a);padding:16px 20px;
+  position:sticky;top:0;z-index:5;border-bottom:1px solid rgba(255,255,255,0.08);
+  display:flex;align-items:flex-start;justify-content:space-between;gap:12px;}
+.dr-title{font-family:"DM Serif Display",serif;font-size:18px;color:#fff;line-height:1.2;}
+.dr-sub{font-size:12px;color:rgba(255,255,255,0.45);margin-top:3px;}
+.dr-close{background:rgba(255,255,255,0.1);border:none;color:#fff;width:32px;height:32px;
+  border-radius:50%;font-size:16px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;}
+
+/* ── DRAWER BODY ── */
+.dr-body{padding:20px 16px 80px;}
+
+/* Score hero */
+.score-hero{display:flex;align-items:center;gap:16px;background:rgba(255,255,255,0.05);
+  border-radius:14px;padding:16px;margin-bottom:20px;border:1px solid rgba(255,255,255,0.08);}
+.score-big{width:72px;height:72px;border-radius:50%;flex-shrink:0;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;}
+.sb-num{font-family:"DM Serif Display",serif;font-size:26px;line-height:1;color:inherit;}
+.sb-den{font-size:10px;opacity:0.65;color:inherit;}
+.score-info{}
+.score-rating{font-size:12px;font-weight:700;padding:3px 10px;border-radius:10px;display:inline-block;margin-bottom:5px;}
+.score-meta{font-size:12px;color:rgba(255,255,255,0.45);line-height:1.6;}
+
+/* Domain bars */
+.domain-section{margin-bottom:20px;}
+.dom-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;
+  color:rgba(255,255,255,0.3);margin-bottom:10px;}
+.dom-card{background:rgba(255,255,255,0.97);border-radius:12px;padding:14px 16px;margin-bottom:10px;}
+.dom-card-title{font-size:11px;font-weight:700;color:#1a4a1a;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px;}
+.param-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;}
+.param-row:last-child{margin-bottom:0;}
+.param-lbl{font-size:12px;color:#3a5a3a;flex:1;}
+.param-score{display:flex;gap:4px;}
+.dot{width:20px;height:20px;border-radius:5px;background:#e8f0e8;border:1px solid #d4e4d4;
+  display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#7a9a7a;}
+.dot.filled{background:#2D6A2D;border-color:#2D6A2D;color:#fff;}
+.dom-total-row{display:flex;justify-content:flex-end;align-items:center;gap:6px;margin-top:6px;padding-top:6px;border-top:1px solid #e8f0e8;}
+.dom-total-lbl{font-size:10px;color:#6a8a6a;}
+.dom-total-val{font-family:"DM Serif Display",serif;font-size:16px;color:#1a4a1a;font-weight:700;}
+
+/* Read-only info cards */
+.info-card{background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);
+  border-radius:12px;padding:14px 16px;margin-bottom:12px;}
+.info-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;
+  color:rgba(255,255,255,0.3);margin-bottom:6px;}
+.info-value{font-size:13px;color:rgba(255,255,255,0.75);line-height:1.6;white-space:pre-wrap;word-break:break-word;}
+.info-value.empty{color:rgba(255,255,255,0.25);font-style:italic;}
+
+/* Teacher Remarks editable section */
+.remarks-section{background:rgba(255,255,255,0.97);border-radius:14px;padding:18px 16px;margin-bottom:20px;}
+.remarks-title{font-size:12px;font-weight:700;color:#1a4a1a;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:4px;}
+.remarks-hint{font-size:11px;color:#6a8a6a;margin-bottom:10px;}
+textarea.remarks-input{width:100%;min-height:90px;padding:12px 14px;
+  border:2px solid #d4e4d4;border-radius:10px;font-family:"DM Sans",sans-serif;
+  font-size:14px;color:#1a2a1a;resize:vertical;outline:none;transition:border-color 0.2s;}
+textarea.remarks-input:focus{border-color:#2D6A2D;}
+
+/* Submit bar */
+.submit-bar{position:fixed;bottom:0;left:0;right:0;background:rgba(10,26,10,0.97);
+  backdrop-filter:blur(12px);padding:12px 20px 20px;border-top:1px solid rgba(255,255,255,0.08);z-index:200;}
+.btn-submit{width:100%;padding:14px;background:linear-gradient(135deg,#1a4a1a,#2D6A2D);
+  border:none;border-radius:10px;color:#fff;font-family:"DM Sans",sans-serif;
+  font-size:15px;font-weight:700;cursor:pointer;transition:all 0.2s;letter-spacing:0.02em;}
+.btn-submit:disabled{opacity:0.55;cursor:not-allowed;}
+.btn-submit:active:not(:disabled){transform:scale(0.98);}
+.save-msg{text-align:center;font-size:12px;margin-top:8px;min-height:16px;}
+.save-msg.ok{color:#7fff7f;}
+.save-msg.err{color:#ff9090;}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="hdr">
+  <div class="hdr-inner">
+    <div class="hdr-left">
+      <div>
+        <div class="hdr-school">Harvest International School</div>
+        <div class="hdr-sub">My Observation Reports</div>
+      </div>
+    </div>
+    <div class="hdr-right">
+      <div class="teacher-chip" id="teacherChip">Teacher</div>
+      <button class="btn-logout" onclick="doLogout()">&#9211; Logout</button>
+    </div>
+  </div>
+</div>
+
+<!-- LIST VIEW -->
+<div class="body" id="listView">
+  <div class="greeting">
+    <div class="greeting-hi" id="greetingName">Hello, Teacher!</div>
+    <div class="greeting-sub">Here are your classroom observation reports.</div>
+  </div>
+  <div class="section-label">Observation Reports</div>
+  <div id="auditList"><div class="msg"><span class="spinner"></span>Loading your reports...</div></div>
+</div>
+
+<!-- DETAIL DRAWER -->
+<div class="overlay" id="overlay" onclick="closeDrawer()"></div>
+<div class="drawer" id="drawer">
+  <div class="dr-hdr">
+    <div>
+      <div class="dr-title" id="drTitle">Observation Report</div>
+      <div class="dr-sub" id="drSub"></div>
+    </div>
+    <button class="dr-close" onclick="closeDrawer()">&#10005;</button>
+  </div>
+  <div class="dr-body" id="drBody"></div>
+  <div class="submit-bar" id="submitBar" style="display:none">
+    <button class="btn-submit" id="btnSubmit" onclick="saveRemarks()">Save My Remarks</button>
+    <div class="save-msg" id="saveMsg"></div>
+  </div>
+</div>
+
+<script>
+var teacherName    = '';
+var teacherLoc     = '';
+var sessionRole    = 'teacher';
+var allAudits      = [];
+var currentAudit   = null;
+
+// ── BOOT ──
+window.onload = function() {
+  google.script.run
+    .withSuccessHandler(function(session) {
+      teacherName = (session && session.name)     || '';
+      teacherLoc  = (session && session.location) || 'Kodathi';
+      sessionRole = (session && session.role)     || 'teacher';
+      document.getElementById('teacherChip').textContent  = teacherName || 'Teacher';
+      document.getElementById('greetingName').textContent = 'Hello, ' + (teacherName || 'Teacher') + '!';
+      fetchAudits();
+    })
+    .withFailureHandler(function() {
+      teacherLoc = 'Kodathi';
+      fetchAudits();
+    })
+    .getSession();
+};
+
+// ── FETCH ──
+function fetchAudits() {
+  google.script.run
+    .withSuccessHandler(function(result) {
+      if (!result || result.success === false) {
+        showError((result && result.error) || 'Could not load reports.');
+        return;
+      }
+      allAudits = result.audits || [];
+      renderList();
+    })
+    .withFailureHandler(function(err) {
+      showError((err && err.message) || String(err));
+    })
+    .getTeacherAudits(teacherName, teacherLoc);
+}
+
+// ── RENDER LIST ──
+function renderList() {
+  var el        = document.getElementById('auditList');
+  var isTeacher = (sessionRole === 'teacher');
+
+  // Teachers only see finalised reports (draft = 'No' or empty)
+  var visible = isTeacher
+    ? allAudits.filter(function(a) { return a.draft !== 'Yes'; })
+    : allAudits;
+
+  if (!visible.length) {
+    // Determine the right message
+    var hasDraftsOnly = isTeacher && allAudits.length > 0 &&
+      allAudits.every(function(a) { return a.draft === 'Yes'; });
+    if (!allAudits.length) {
+      el.innerHTML =
+        '<div class="no-data">' +
+          '<div class="no-data-icon">&#128218;</div>' +
+          '<div class="no-data-title">No observations recorded yet</div>' +
+          '<div class="no-data-sub">Your classroom observation reports will appear here once an auditor has completed an observation session. Please check back later or contact your school coordinator.</div>' +
+        '</div>';
+    } else if (hasDraftsOnly) {
+      el.innerHTML =
+        '<div class="no-data">' +
+          '<div class="no-data-icon">&#9203;</div>' +
+          '<div class="no-data-title">Reports are being reviewed</div>' +
+          '<div class="no-data-sub">Your observation has been recorded and is currently being reviewed by your auditor. Your finalised report will appear here once the review is complete.</div>' +
+        '</div>';
+    } else {
+      el.innerHTML =
+        '<div class="no-data">' +
+          '<div class="no-data-icon">&#128203;</div>' +
+          '<div class="no-data-title">No finalised reports yet</div>' +
+          '<div class="no-data-sub">Your reports will appear here once your auditor has finalised the observation.</div>' +
+        '</div>';
+    }
+    return;
+  }
+
+  var html = '<div class="audit-list">';
+  // Iterate allAudits to preserve indices for openDrawer
+  allAudits.forEach(function(a, i) {
+    if (isTeacher && a.draft === 'Yes') return; // skip drafts for teachers
+    var s    = a.overall;
+    var band = s >= 23 ? 'band-dist' : s >= 17 ? 'band-prof' : s >= 12 ? 'band-dev' : 'band-beg';
+    var rtC  = ratingClass(a.rating);
+    html +=
+      '<button class="audit-btn" id="auditBtn_' + i + '" onclick="openDrawer(' + i + ')">' +
+        '<div class="audit-score-circle ' + band + '">' +
+          '<div class="asc-num">' + s + '</div>' +
+          '<div class="asc-den">/28</div>' +
+        '</div>' +
+        '<div class="audit-info">' +
+          '<div class="audit-auditor" style="font-size:14px;font-weight:800;color:#1a2a1a">' + esc(teacherName || 'Teacher') + '</div>' +
+          '<div class="audit-date">&#128110; ' + esc(a.auditor) + ' &nbsp;&middot;&nbsp; &#128197; ' + esc(a.date) + '</div>' +
+          '<div class="audit-meta">' +
+            '<span class="audit-location">&#128205; ' + esc(a.location) + '</span>' +
+            (a.subject ? '<span class="audit-subject">&#128218; ' + esc(a.subject) + '</span>' : '') +
+            (a.grade   ? '<span class="audit-grade">&#127979; ' + esc(a.grade) + '</span>' : '') +
+            (a.rating  ? '<span class="audit-rating ' + rtC + '">' + esc(a.rating) + '</span>' : '') +
+          '</div>' +
+        '</div>' +
+        '<div class="audit-arrow">&#8250;</div>' +
+      '</button>';
+  });
+  html += '</div>';
+  el.innerHTML = html;
+}
+
+// ── OPEN DRAWER ──
+function openDrawer(idx) {
+  currentAudit = allAudits[idx];
+  var a = currentAudit;
+  var s = a.overall;
+  var band = s >= 23 ? 'band-dist' : s >= 17 ? 'band-prof' : s >= 12 ? 'band-dev' : 'band-beg';
+  var rtC  = ratingClass(a.rating);
+
+  document.getElementById('drTitle').textContent = 'Observation by ' + (a.auditor || 'Auditor');
+  document.getElementById('drSub').textContent   = a.date + ' · ' + a.subject + ' · ' + a.grade;
+
+  // Helper: render score dots
+  function dots(score, max) {
+    var h = '';
+    for (var i = 1; i <= max; i++) {
+      h += '<div class="dot' + (i <= score ? ' filled' : '') + '">' + i + '</div>';
+    }
+    return h;
+  }
+
+  var body = '';
+
+  // Draft pill
+  var draftPill = a.draft === 'Yes'
+    ? '<div style="margin-bottom:12px"><span class="draft-pill draft-pill-yes">&#9998; Saved as Draft — AI feedback may still be updated by your auditor</span></div>'
+    : '<div style="margin-bottom:12px"><span class="draft-pill draft-pill-no">&#10003; Observation Finalised</span></div>';
+  body += draftPill;
+
+  // Score hero
+  body +=
+    '<div class="score-hero">' +
+      '<div class="score-big ' + band + '">' +
+        '<div class="sb-num">' + s + '</div>' +
+        '<div class="sb-den">/28</div>' +
+      '</div>' +
+      '<div class="score-info">' +
+        '<div class="score-rating ' + rtC + '">' + esc(a.rating || '—') + '</div>' +
+        '<div class="score-meta">' +
+          esc(a.location) + ' &nbsp;·&nbsp; ' + esc(a.subject) + '<br>' +
+          esc(a.grade) + '<br>' +
+          'Observed: ' + esc(a.date) +
+        '</div>' +
+      '</div>' +
+    '</div>';
+
+  // Domain 1
+  body +=
+    '<div class="domain-section">' +
+    '<div class="dom-title">Domain Scores</div>' +
+    '<div class="dom-card">' +
+      '<div class="dom-card-title">Domain 1 — Planning &amp; Preparation &nbsp;<span style="font-size:10px;color:#7a9a7a;font-weight:400">/8</span></div>' +
+      '<div class="param-row"><div class="param-lbl">1.1 Knowledge of Content &amp; Curriculum</div>' +
+        '<div class="param-score">' + dots(a.p11, 4) + '</div></div>' +
+      '<div class="param-row"><div class="param-lbl">1.2 Alignment of Learning Outcomes</div>' +
+        '<div class="param-score">' + dots(a.p12, 4) + '</div></div>' +
+      '<div class="dom-total-row"><div class="dom-total-lbl">Domain 1 Total:</div>' +
+        '<div class="dom-total-val">' + a.domain1 + ' / 8</div></div>' +
+    '</div>';
+
+  // Domain 2
+  body +=
+    '<div class="dom-card">' +
+      '<div class="dom-card-title">Domain 2 — Classroom Environment &nbsp;<span style="font-size:10px;color:#7a9a7a;font-weight:400">/4</span></div>' +
+      '<div class="param-row"><div class="param-lbl">2.1 Managing Classroom Procedures</div>' +
+        '<div class="param-score">' + dots(a.p21, 4) + '</div></div>' +
+      '<div class="dom-total-row"><div class="dom-total-lbl">Domain 2 Total:</div>' +
+        '<div class="dom-total-val">' + a.domain2 + ' / 4</div></div>' +
+    '</div>';
+
+  // Domain 3
+  body +=
+    '<div class="dom-card">' +
+      '<div class="dom-card-title">Domain 3 — Instruction &amp; Implementation &nbsp;<span style="font-size:10px;color:#7a9a7a;font-weight:400">/16</span></div>' +
+      '<div class="param-row"><div class="param-lbl">3.1 Questioning &amp; Discussion Techniques</div>' +
+        '<div class="param-score">' + dots(a.p31, 4) + '</div></div>' +
+      '<div class="param-row"><div class="param-lbl">3.2 Fostering Student Engagement</div>' +
+        '<div class="param-score">' + dots(a.p32, 4) + '</div></div>' +
+      '<div class="param-row"><div class="param-lbl">3.3 Implementation of Process</div>' +
+        '<div class="param-score">' + dots(a.p33, 4) + '</div></div>' +
+      '<div class="param-row"><div class="param-lbl">3.4 Effective Use of Technology</div>' +
+        '<div class="param-score">' + dots(a.p34, 4) + '</div></div>' +
+      '<div class="dom-total-row"><div class="dom-total-lbl">Domain 3 Total:</div>' +
+        '<div class="dom-total-val">' + a.domain3 + ' / 16</div></div>' +
+    '</div></div>';
+
+  // Objective Observations
+  body += infoCard('&#128065; Objective Observations (Auditor)', a.otherRemarks);
+
+  // Infrastructure / Other Issues
+  if ((a.infraIssues && a.infraIssues !== 'None') || (a.otherIssues && a.otherIssues !== 'None')) {
+    if (a.infraIssues && a.infraIssues !== 'None')
+      body += infoCard('&#9888;&#65039; Infrastructure Issues', a.infraIssues);
+    if (a.otherIssues && a.otherIssues !== 'None')
+      body += infoCard('&#9888;&#65039; Other Issues', a.otherIssues);
+  }
+
+  // AI Feedback
+  body += infoCard('&#129302; AI Feedback for Teacher', a.feedback);
+
+  // Teacher Remarks — editable
+  body +=
+    '<div class="remarks-section">' +
+      '<div class="remarks-title">&#9999;&#65039; My Remarks</div>' +
+      '<div class="remarks-hint">Add your response or comments below. Click "Save My Remarks" when done.</div>' +
+      '<textarea class="remarks-input" id="teacherRemarksInput" placeholder="Enter your remarks here...">' +
+        esc(a.teacherRemarks || '') +
+      '</textarea>' +
+    '</div>';
+
+  document.getElementById('drBody').innerHTML = body;
+  document.getElementById('saveMsg').textContent = '';
+  document.getElementById('btnSubmit').disabled  = false;
+  document.getElementById('submitBar').style.display = 'block';
+
+  document.getElementById('overlay').classList.add('open');
+  document.getElementById('drawer').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function infoCard(label, value) {
+  var hasVal = value && value.trim() && value.trim() !== 'None';
+  return '<div class="info-card">' +
+    '<div class="info-label">' + label + '</div>' +
+    '<div class="info-value' + (hasVal ? '' : ' empty') + '">' +
+      (hasVal ? esc(value.trim()) : 'None recorded') +
+    '</div>' +
+  '</div>';
+}
+
+// ── SAVE REMARKS ──
+function saveRemarks() {
+  if (!currentAudit) return;
+  var text = document.getElementById('teacherRemarksInput').value.trim();
+  var btn  = document.getElementById('btnSubmit');
+  var msg  = document.getElementById('saveMsg');
+
+  btn.disabled = true;
+  btn.textContent = 'Saving...';
+  msg.textContent = '';
+  msg.className = 'save-msg';
+
+  google.script.run
+    .withSuccessHandler(function(result) {
+      btn.disabled = false;
+      btn.textContent = 'Save My Remarks';
+      if (result && result.success) {
+        currentAudit.teacherRemarks = text;
+        msg.textContent = '✓ Saved successfully';
+        msg.className = 'save-msg ok';
+      } else {
+        msg.textContent = '✗ ' + ((result && result.error) || 'Save failed');
+        msg.className = 'save-msg err';
+      }
+    })
+    .withFailureHandler(function(err) {
+      btn.disabled = false;
+      btn.textContent = 'Save My Remarks';
+      msg.textContent = '✗ ' + ((err && err.message) || 'Save failed');
+      msg.className = 'save-msg err';
+    })
+    .saveTeacherRemarks(currentAudit.tabName, currentAudit.rowIndex, text);
+}
+
+// ── CLOSE DRAWER ──
+function closeDrawer() {
+  document.getElementById('overlay').classList.remove('open');
+  document.getElementById('drawer').classList.remove('open');
+  document.getElementById('submitBar').style.display = 'none';
+  document.body.style.overflow = '';
+  currentAudit = null;
+}
+
+// ── HELPERS ──
+function showError(msg) {
+  document.getElementById('auditList').innerHTML =
+    '<div class="no-data">' +
+      '<div class="no-data-icon">&#9888;&#65039;</div>' +
+      '<div class="no-data-title">Could not load reports</div>' +
+      '<div class="no-data-sub">' + esc(msg) + '</div>' +
+    '</div>';
+}
+
+function ratingClass(r) {
+  var m = {DISTINGUISHED:'rt-dist',PROFICIENT:'rt-prof',DEVELOPING:'rt-dev',BEGINNING:'rt-beg'};
+  return m[(r||'').toUpperCase().trim()] || 'rt-dev';
+}
+
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function doLogout() {
+  google.script.run
+    .withSuccessHandler(function(url) { window.top.location.href = url; })
+    .withFailureHandler(function() { window.top.location.reload(); })
+    .getScriptUrl();
+}
+</script>
+</body>
+</html>
