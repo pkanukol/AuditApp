@@ -177,7 +177,7 @@ async def finalise_observation(
         auditor_email=finalised_obs.auditor.email,
         school=finalised_obs.school,
         grade=f"{finalised_obs.grade} {finalised_obs.section}",
-        app_url="https://auditapp-2.onrender.com/?page=teacher",
+        app_url="http://localhost:5173/?page=teacher",
     )
     finalised_obs.email_sent = True
     db.commit()
@@ -210,7 +210,7 @@ async def save_remarks(
         teacher_email=current_user.email,
         school=updated_obs.school,
         grade=f"{updated_obs.grade} {updated_obs.section}",
-        app_url="http://auditapp-2.onrender.com/?page=dashboard",
+        app_url="http://localhost:5173/?page=dashboard",
     )
     return updated_obs
 
@@ -384,20 +384,26 @@ async def get_subject_summary(
             teacher_data[t_id] = {
                 "teacher_id": t_id,
                 "teacher_name": obs.teacher.name,
-                "scores": [],
+                "scores": [], "d1_scores": [], "d2_scores": [], "d3_scores": [],
                 "obs_count": 0,
                 "latest_rating": obs.rating,
             }
         teacher_data[t_id]["scores"].append(obs.overall_score)
+        teacher_data[t_id]["d1_scores"].append(obs.domain1_score)
+        teacher_data[t_id]["d2_scores"].append(obs.domain2_score)
+        teacher_data[t_id]["d3_scores"].append(obs.domain3_score)
         teacher_data[t_id]["obs_count"] += 1
 
     result = []
     for t_id, data in teacher_data.items():
-        avg = round(sum(data["scores"]) / len(data["scores"]), 1)
+        avg = lambda k: round(sum(data[k]) / len(data[k]), 1)
         result.append({
             "teacher_id": data["teacher_id"],
             "teacher_name": data["teacher_name"],
-            "avg_score": avg,
+            "avg_score": avg("scores"),
+            "domain1_avg": avg("d1_scores"),
+            "domain2_avg": avg("d2_scores"),
+            "domain3_avg": avg("d3_scores"),
             "obs_count": data["obs_count"],
             "scores": data["scores"],
             "latest_rating": data["latest_rating"],
