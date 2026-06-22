@@ -20,6 +20,7 @@ export default function Dashboard({
   const [subjectData, setSubjectData] = useState([]);
   const [subjectLoading, setSubjectLoading] = useState(false);
   const [subjectError, setSubjectError] = useState("");
+  const [expandedTeacher, setExpandedTeacher] = useState(null);
 
   // Teacher audit compare modal
   const [teacherModal, setTeacherModal] = useState(false);
@@ -41,17 +42,16 @@ export default function Dashboard({
 
   const subjectOptions = [...new Set(auditList.map((a) => a.subject).filter(Boolean))];
 
-  // Teachers with 2+ finalized audits
+  // Teachers with 1+ finalized audits
   const multiAuditTeachers = useMemo(() => {
     const map = {};
     auditList.filter((a) => !a.is_draft).forEach((a) => {
       if (!map[a.teacher_id]) map[a.teacher_id] = { id: a.teacher_id, name: a.teacher_name, audits: [] };
       map[a.teacher_id].audits.push(a);
     });
-    return Object.values(map).filter((t) => t.audits.length >= 2);
+    return Object.values(map).filter((t) => t.audits.length >= 1);
   }, [auditList]);
 
-  // Teacher compare: audits for selected teacher, sorted latest first
   const teacherAudits = useMemo(() => {
     if (!selectedTeacherId) return [];
     return auditList
@@ -71,11 +71,11 @@ export default function Dashboard({
     };
   }, [teacherAudits]);
 
-  // Subject compare
   const openSubjectModal = () => {
     setSubjectModal(true);
     setSubjectData([]);
     setSubjectError("");
+    setExpandedTeacher(null);
     const first = subjectOptions[0] || "";
     setSelectedSubject(first);
     if (first) loadSubjectSummary(first);
@@ -86,6 +86,7 @@ export default function Dashboard({
     setSubjectLoading(true);
     setSubjectError("");
     setSubjectData([]);
+    setExpandedTeacher(null);
     api
       .getSubjectSummary(token, location, subject)
       .then(setSubjectData)
@@ -93,14 +94,13 @@ export default function Dashboard({
       .finally(() => setSubjectLoading(false));
   };
 
-  // Teacher compare
   const openTeacherModal = () => {
     const first = multiAuditTeachers[0];
     setSelectedTeacherId(first ? String(first.id) : "");
     setTeacherAnalysis("");
     setTeacherAnalysisError("");
     setTeacherModal(true);
-    if (first) loadTeacherAnalysis(first.id);
+    if (first && first.audits.length >= 2) loadTeacherAnalysis(first.id);
   };
 
   const loadTeacherAnalysis = async (teacherId) => {
@@ -120,7 +120,6 @@ export default function Dashboard({
 
   return (
     <div style={{ paddingTop: "24px" }}>
-      {/* Top controls */}
       <div className="loc-toggle-row">
         <div className="loc-tabs">
           <button
@@ -163,7 +162,6 @@ export default function Dashboard({
         </div>
       )}
 
-      {/* Compact audit grid — 3-4 per row */}
       <div className="audit-grid">
         {auditList.map((obs) => (
           <div key={obs.id} className="audit-card" onClick={() => onOpenObs(obs.id)}>
@@ -226,21 +224,48 @@ export default function Dashboard({
                 <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                   {subjectData.map((t, idx) => {
                     const pct = (t.avg_score / 28) * 100;
+                    const isExpanded = expandedTeacher === t.teacher_id;
                     return (
-                      <div key={t.teacher_id} className="subject-compare-row">
-                        <div className="subject-compare-rank">#{idx + 1}</div>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
-                            <span style={{ fontWeight: 700, fontSize: "14px", color: "var(--text-white)" }}>{esc(t.teacher_name)}</span>
-                            <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--harvest-green)" }}>{t.avg_score}/28</span>
+                      <div key={t.teacher_id} className="subject-compare-row" style={{ flexDirection: "column", alignItems: "stretch", gap: 0 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                          <div className="subject-compare-rank">#{idx + 1}</div>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
+                              <span style={{ fontWeight: 700, fontSize: "14px", color: "var(--text-white)" }}>{esc(t.teacher_name)}</span>
+                              <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--harvest-green)" }}>{t.avg_score}/28</span>
+                            </div>
+                            <div className="timeline-bar-track">
+                              <div className="timeline-bar-fill tbar-green" style={{ width: `${pct}%` }}></div>
+                            </div>
+                            <div style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "3px" }}>
+                              {t.obs_count} audit{t.obs_count !== 1 ? "s" : ""} · {esc(t.latest_rating)}
+                            </div>
                           </div>
-                          <div className="timeline-bar-track">
-                            <div className="timeline-bar-fill tbar-green" style={{ width: `${pct}%` }}></div>
-                          </div>
-                          <div style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "3px" }}>
-                            {t.obs_count} audit{t.obs_count !== 1 ? "s" : ""} · {esc(t.latest_rating)}
-                          </div>
+                          <button
+                            onClick={() => setExpandedTeacher(isExpanded ? null : t.teacher_id)}
+                            style={{ background: "none", border: "1px solid var(--border)", borderRadius: "6px", color: "var(--text-muted)", cursor: "pointer", padding: "4px 8px", fontSize: "11px", whiteSpace: "nowrap" }}
+                          >
+                            {isExpanded ? "▲ Hide" : "▼ Domains"}
+                          </button>
                         </div>
+                        {isExpanded && (
+                          <div style={{ marginTop: "10px", paddingTop: "10px", borderTop: "1px solid var(--border)", display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "8px" }}>
+                            {[
+                              { label: "Domain 1", value: t.domain1_avg, max: 8 },
+                              { label: "Domain 2", value: t.domain2_avg, max: 4 },
+                              { label: "Domain 3", value: t.domain3_avg, max: 16 },
+                            ].map((d) => (
+                              <div key={d.label} style={{ background: "var(--bg-card)", borderRadius: "8px", padding: "10px", textAlign: "center" }}>
+                                <div style={{ fontSize: "11px", color: "var(--text-muted)", marginBottom: "4px" }}>{d.label}</div>
+                                <div style={{ fontSize: "18px", fontWeight: 700, color: "var(--harvest-green)" }}>{d.value}</div>
+                                <div style={{ fontSize: "10px", color: "var(--text-gray)" }}>/ {d.max}</div>
+                                <div className="timeline-bar-track" style={{ marginTop: "6px" }}>
+                                  <div className="timeline-bar-fill tbar-green" style={{ width: `${(d.value / d.max) * 100}%` }}></div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     );
                   })}
@@ -269,8 +294,12 @@ export default function Dashboard({
                   className="input-text"
                   value={selectedTeacherId}
                   onChange={(e) => {
-                    setSelectedTeacherId(e.target.value);
-                    loadTeacherAnalysis(e.target.value);
+                    const id = e.target.value;
+                    setSelectedTeacherId(id);
+                    setTeacherAnalysis("");
+                    setTeacherAnalysisError("");
+                    const t = multiAuditTeachers.find((t) => String(t.id) === id);
+                    if (t && t.audits.length >= 2) loadTeacherAnalysis(id);
                   }}
                 >
                   {multiAuditTeachers.map((t) => (
@@ -278,6 +307,12 @@ export default function Dashboard({
                   ))}
                 </select>
               </div>
+
+              {teacherAudits.length === 1 && (
+                <div style={{ color: "var(--text-muted)", fontSize: "13px", padding: "12px", background: "var(--bg-card)", borderRadius: "8px", marginBottom: "12px" }}>
+                  Only 1 audit recorded for this teacher. Comparison and AI analysis require at least 2 audits.
+                </div>
+              )}
 
               {teacherAudits.length > 0 && (
                 <>
@@ -310,7 +345,7 @@ export default function Dashboard({
                             </td>
                           </tr>
                         ))}
-                        {teacherAverages && (
+                        {teacherAverages && teacherAudits.length >= 2 && (
                           <tr className="ctable-avg-row">
                             <td colSpan={3} style={{ fontWeight: 700 }}>Average</td>
                             <td className="ctable-score">{teacherAverages.d1}</td>
@@ -324,19 +359,19 @@ export default function Dashboard({
                     </table>
                   </div>
 
-                  <div style={{ marginTop: "16px" }}>
-                    <div className="drawer-section-label">Improvement Analysis</div>
-                    {teacherAnalysisLoading && <div className="msg"><span className="spinner" />Generating analysis...</div>}
-                    {teacherAnalysisError && <div className="error-banner">{teacherAnalysisError}</div>}
-                    {!teacherAnalysisLoading && teacherAnalysis && (
-                      <div className="hc-val ai-box" style={{ marginTop: "8px" }}>{teacherAnalysis}</div>
-                    )}
-                    {!teacherAnalysisLoading && !teacherAnalysis && !teacherAnalysisError && (
-                      <div style={{ color: "var(--text-muted)", fontSize: "13px" }}>
-                        No analysis available.
-                      </div>
-                    )}
-                  </div>
+                  {teacherAudits.length >= 2 && (
+                    <div style={{ marginTop: "16px" }}>
+                      <div className="drawer-section-label">Improvement Analysis</div>
+                      {teacherAnalysisLoading && <div className="msg"><span className="spinner" />Generating analysis...</div>}
+                      {teacherAnalysisError && <div className="error-banner">{teacherAnalysisError}</div>}
+                      {!teacherAnalysisLoading && teacherAnalysis && (
+                        <div className="hc-val ai-box" style={{ marginTop: "8px" }}>{teacherAnalysis}</div>
+                      )}
+                      {!teacherAnalysisLoading && !teacherAnalysis && !teacherAnalysisError && (
+                        <div style={{ color: "var(--text-muted)", fontSize: "13px" }}>No analysis available.</div>
+                      )}
+                    </div>
+                  )}
                 </>
               )}
             </div>
