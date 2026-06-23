@@ -57,6 +57,7 @@ class Observation(Base):
     objective_observations = Column(Text, nullable=True)
     teacher_remarks = Column(Text, nullable=True)
     ai_feedback = Column(Text, nullable=True)
+    auditor_remarks = Column(Text, nullable=True)
     
     # Status
     is_draft = Column(Boolean, default=True)
