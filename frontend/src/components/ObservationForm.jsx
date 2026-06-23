@@ -65,7 +65,9 @@ export default function ObservationForm({
   const [section, setSection] = useState("");
   const [infraIssues, setInfraIssues] = useState("");
   const [otherIssues, setOtherIssues] = useState("");
-  const [auditorRemarks, setAuditorRemarks] = useState("");
+  const [domain1Remarks, setDomain1Remarks] = useState("");
+  const [domain2Remarks, setDomain2Remarks] = useState("");
+  const [domain3Remarks, setDomain3Remarks] = useState("");
   const [liveNote, setLiveNote] = useState("");
 
   const { d1, d2, d3, total, rating } = calculateScores(formScores);
@@ -102,7 +104,9 @@ export default function ObservationForm({
       infrastructure_issues: infraIssues.trim(),
       other_issues: otherIssues.trim(),
       objective_observations: timestampedNotes.join("\n"),
-      auditor_remarks: auditorRemarks.trim(),
+      domain1_remarks: domain1Remarks.trim(),
+      domain2_remarks: domain2Remarks.trim(),
+      domain3_remarks: domain3Remarks.trim(),
       ...formScores,
     });
   };
@@ -232,29 +236,47 @@ export default function ObservationForm({
             <h2>Domain Parameters & Rubrics</h2>
           </div>
           <div className="card">
-            {RUBRICS.map((domain, idx) => (
-              <div key={domain.domain}>
-                <h3
-                  style={{
-                    color: "var(--harvest-blue)",
-                    marginBottom: "20px",
-                    marginTop: idx > 0 ? "30px" : 0,
-                    borderBottom: "1.5px solid rgba(41,171,226,0.2)",
-                    paddingBottom: "5px",
-                  }}
-                >
-                  {domain.domain}
-                </h3>
-                {domain.params.map((param) => (
-                  <RubricParameter
-                    key={param.key}
-                    param={param}
-                    score={formScores[param.key]}
-                    onSelect={(key, score) => setFormScores((prev) => ({ ...prev, [key]: score }))}
-                  />
-                ))}
-              </div>
-            ))}
+            {RUBRICS.map((domain, idx) => {
+              const remarkState = [
+                [domain1Remarks, setDomain1Remarks],
+                [domain2Remarks, setDomain2Remarks],
+                [domain3Remarks, setDomain3Remarks],
+              ][idx];
+              return (
+                <div key={domain.domain}>
+                  <h3
+                    style={{
+                      color: "var(--harvest-blue)",
+                      marginBottom: "20px",
+                      marginTop: idx > 0 ? "30px" : 0,
+                      borderBottom: "1.5px solid rgba(41,171,226,0.2)",
+                      paddingBottom: "5px",
+                    }}
+                  >
+                    {domain.domain}
+                  </h3>
+                  {domain.params.map((param) => (
+                    <RubricParameter
+                      key={param.key}
+                      param={param}
+                      score={formScores[param.key]}
+                      onSelect={(key, score) => setFormScores((prev) => ({ ...prev, [key]: score }))}
+                    />
+                  ))}
+                  <div className="form-group" style={{ marginTop: "12px" }}>
+                    <label className="field-label" style={{ fontSize: "12px", color: "var(--text-muted)" }}>
+                      Remarks for {domain.domain.split(":")[0]}
+                    </label>
+                    <textarea
+                      placeholder={`Observations and suggestions for ${domain.domain.split(":")[1]?.trim() || "this domain"}...`}
+                      style={{ minHeight: "72px", fontSize: "13px" }}
+                      value={remarkState[0]}
+                      onChange={(e) => remarkState[1](e.target.value)}
+                    />
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
 
@@ -280,15 +302,6 @@ export default function ObservationForm({
                 style={{ minHeight: "80px" }}
                 value={otherIssues}
                 onChange={(e) => setOtherIssues(e.target.value)}
-              />
-            </div>
-            <div className="form-group">
-              <label className="field-label">Auditor / SME Remarks</label>
-              <textarea
-                placeholder="Overall remarks, suggestions, observations during the session..."
-                style={{ minHeight: "100px" }}
-                value={auditorRemarks}
-                onChange={(e) => setAuditorRemarks(e.target.value)}
               />
             </div>
           </div>
