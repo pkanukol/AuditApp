@@ -80,7 +80,9 @@ class ObservationBase(BaseModel):
     infrastructure_issues: Optional[str] = ""
     other_issues: Optional[str] = ""
     objective_observations: Optional[str] = ""
-    auditor_remarks: Optional[str] = ""
+    domain1_remarks: Optional[str] = ""
+    domain2_remarks: Optional[str] = ""
+    domain3_remarks: Optional[str] = ""
 
 class ObservationCreate(ObservationBase):
     teacher_id: int
@@ -88,7 +90,9 @@ class ObservationCreate(ObservationBase):
 class ObservationDraftUpdate(BaseModel):
     objective_observations: str
     ai_feedback: str
-    auditor_remarks: Optional[str] = ""
+    domain1_remarks: Optional[str] = ""
+    domain2_remarks: Optional[str] = ""
+    domain3_remarks: Optional[str] = ""
     p11: Optional[int] = None
     p12: Optional[int] = None
     p21: Optional[int] = None
@@ -113,7 +117,9 @@ class ObservationOut(ObservationBase):
     rating: str
     teacher_remarks: Optional[str] = None
     ai_feedback: Optional[str] = None
-    auditor_remarks: Optional[str] = None
+    domain1_remarks: Optional[str] = None
+    domain2_remarks: Optional[str] = None
+    domain3_remarks: Optional[str] = None
     is_draft: bool
     email_sent: bool
     remarks_saved: bool
