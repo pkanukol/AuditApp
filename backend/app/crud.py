@@ -100,7 +100,9 @@ def create_observation(db: Session, obs_in: schemas.ObservationCreate, auditor_i
         other_issues=obs_in.other_issues,
         objective_observations=obs_in.objective_observations,
         is_draft=True,
-        auditor_remarks=obs_in.auditor_remarks,
+        domain1_remarks=obs_in.domain1_remarks,
+        domain2_remarks=obs_in.domain2_remarks,
+        domain3_remarks=obs_in.domain3_remarks,
     )
     
     db.add(db_obs)
@@ -203,8 +205,9 @@ def update_observation_draft(db: Session, obs_id: int, update_in: schemas.Observ
         return None
     db_obs.objective_observations = update_in.objective_observations
     db_obs.ai_feedback = update_in.ai_feedback
-    if update_in.auditor_remarks is not None:
-        db_obs.auditor_remarks = update_in.auditor_remarks
+    db_obs.domain1_remarks = update_in.domain1_remarks
+    db_obs.domain2_remarks = update_in.domain2_remarks
+    db_obs.domain3_remarks = update_in.domain3_remarks
     scores = [update_in.p11, update_in.p12, update_in.p21, update_in.p31, update_in.p32, update_in.p33, update_in.p34]
     if all(v is not None for v in scores):
         d1, d2, d3, overall, rating = calculate_scores_and_rating(
