@@ -39,7 +39,7 @@ export default function TeacherView({ userName, reports, loading, error, onOpenR
         </div>
       )}
 
-      <div className="teacher-grid">
+      <div className="audit-grid">
         {reports.map((obs) => (
           <div key={obs.id} className="teacher-card" onClick={() => onOpenReport(obs.id)}>
             <div className="card-left">
