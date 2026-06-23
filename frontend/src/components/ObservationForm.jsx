@@ -1,386 +1,400 @@
-import { useEffect, useState } from "react";
-import { api } from "../api";
-import { DRAWER_PARAM_LABELS } from "../constants/rubrics";
-import { esc, formatDateStr, ratingClass } from "../utils/helpers";
+import { useState } from "react";
+import { RUBRICS } from "../constants/rubrics";
+import {
+  calculateScores,
+  EMPTY_SCORES,
+  GRADES,
+  SECTIONS,
+  SUBJECTS,
+} from "../utils/helpers";
 
-const PARAM_MAX = { p11: 4, p12: 4, p21: 4, p31: 4, p32: 4, p33: 4, p34: 4 };
-
-function ScoreSelect({ paramKey, value, onChange }) {
+function RubricParameter({ param, score, onSelect }) {
   return (
-    <select
-      className="input-text"
-      style={{ padding: "4px 8px", fontSize: "13px", width: "80px" }}
-      value={value}
-      onChange={(e) => onChange(paramKey, parseInt(e.target.value, 10))}
-    >
-      {[1, 2, 3, 4].map((v) => (
-        <option key={v} value={v}>{v}/4</option>
-      ))}
-    </select>
+    <div className="param-block">
+      <div className="param-header">
+        <div className="param-title">
+          <span className="param-code-badge">{param.code}</span>
+          {param.title}
+        </div>
+        <div
+          className={`param-score-pill flex-center${score ? ` active-${score}` : ""}`}
+          id={`score_${param.key}`}
+        >
+          {score || "—"}
+        </div>
+      </div>
+      <div className="rubric-list">
+        {param.levels.map((level) => (
+          <label
+            key={level.score}
+            className={`rubric-card${score === level.score ? ` selected-${level.score}` : ""}`}
+            onClick={() => onSelect(param.key, level.score)}
+          >
+            <input type="radio" name={param.key} value={level.score} readOnly checked={score === level.score} />
+            <div className="custom-radio"></div>
+            <div className="rubric-score-tag">
+              <span className="rst-num">{level.score}</span>
+              {level.label}
+            </div>
+            <div className="rubric-desc">{level.desc}</div>
+          </label>
+        ))}
+      </div>
+    </div>
   );
 }
 
-export default function DetailDrawer({ open, token, user, obsId, onClose, onUpdated }) {
-  const [obs, setObs] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [loadError, setLoadError] = useState("");
-  const [editedFeedback, setEditedFeedback] = useState("");
-  const [editedObjectiveObs, setEditedObjectiveObs] = useState("");
-  const [editedRemarks, setEditedRemarks] = useState("");
-  const [editedAuditorRemarks, setEditedAuditorRemarks] = useState("");
-  const [editedScores, setEditedScores] = useState({});
-  const [acknowledged, setAcknowledged] = useState(false);
-  const [witnessName, setWitnessName] = useState("");
-  const [witnessDesignation, setWitnessDesignation] = useState("");
-  const [actionError, setActionError] = useState("");
-  const [actionLoading, setActionLoading] = useState(false);
+export default function ObservationForm({
+  token,
+  teachers,
+  formScores,
+  setFormScores,
+  timestampedNotes,
+  setTimestampedNotes,
+  selectedImages,
+  setSelectedImages,
+  onSubmit,
+  submitting,
+  submitError,
+  onSchoolChange,
+}) {
+  const [school, setSchool] = useState("Kodathi");
+  const [teacherId, setTeacherId] = useState("");
+  const [subject, setSubject] = useState("");
+  const [grade, setGrade] = useState("");
+  const [section, setSection] = useState("");
+  const [infraIssues, setInfraIssues] = useState("");
+  const [otherIssues, setOtherIssues] = useState("");
+  const [auditorRemarks, setAuditorRemarks] = useState("");
+  const [liveNote, setLiveNote] = useState("");
 
-  useEffect(() => {
-    if (!open || !obsId) return;
-    setLoading(true);
-    setLoadError("");
-    setObs(null);
-    setAcknowledged(false);
-    api
-      .getObservation(token, obsId)
-      .then((data) => {
-        setObs(data);
-        setEditedFeedback(data.ai_feedback || "");
-        setEditedObjectiveObs(data.objective_observations || "");
-        setEditedRemarks(data.teacher_remarks || "");
-        setEditedAuditorRemarks(data.auditor_remarks || "");
-        setEditedScores({
-          p11: data.p11, p12: data.p12, p21: data.p21,
-          p31: data.p31, p32: data.p32, p33: data.p33, p34: data.p34,
-        });
-      })
-      .catch((err) => setLoadError(err.message))
-      .finally(() => setLoading(false));
-  }, [open, obsId, token]);
+  const { d1, d2, d3, total, rating } = calculateScores(formScores);
 
-  const isCreator = obs && user && obs.auditor_id === user.id;
-  const isDraftEditable = obs?.is_draft && isCreator;
-  const isSME = user?.role === "sme";
-  const isTeacher = user?.role === "teacher";
-  const isTeacherRemarking = obs && isTeacher && !obs.is_draft && !obs.remarks_saved;
-
-  const showActionPanel = isDraftEditable || isTeacherRemarking;
-  const actionLabel = isDraftEditable ? "Finalise Audit & Send Notification" : "Save My Remarks";
-
-  // Finalize disabled for SME until acknowledged with name + designation filled
-  const smeAckComplete = acknowledged && witnessName.trim() && witnessDesignation.trim();
-  const finalizeDisabled = actionLoading || (isDraftEditable && isSME && !smeAckComplete);
-
-  const handleScoreChange = (key, val) => {
-    setEditedScores((prev) => ({ ...prev, [key]: val }));
+  const addNote = () => {
+    const note = liveNote.trim();
+    if (!note) return;
+    const time = new Date().toLocaleTimeString("en-IN", {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    });
+    setTimestampedNotes((prev) => [...prev, `[${time}] ${note}`]);
+    setLiveNote("");
   };
 
-  // Live recalculate scores for display
-  const liveD1 = (editedScores.p11 || 0) + (editedScores.p12 || 0);
-  const liveD2 = editedScores.p21 || 0;
-  const liveD3 = (editedScores.p31 || 0) + (editedScores.p32 || 0) + (editedScores.p33 || 0) + (editedScores.p34 || 0);
-  const liveTotal = liveD1 + liveD2 + liveD3;
+  const handleImageSelection = (event) => {
+    const files = Array.from(event.target.files || []);
+    setSelectedImages((prev) => [...prev, ...files]);
+    event.target.value = "";
+  };
 
-  const handleAction = async () => {
-    if (!obs) return;
-    setActionError("");
-    setActionLoading(true);
-    try {
-      if (isDraftEditable) {
-        await api.updateDraft(token, obs.id, {
-          objective_observations: editedObjectiveObs,
-          ai_feedback: editedFeedback,
-          auditor_remarks: editedAuditorRemarks,
-          ...editedScores,
-        });
-        await api.finaliseObservation(token, obs.id);
-        onClose();
-        onUpdated();
-      } else if (isTeacherRemarking) {
-        if (!editedRemarks.trim()) {
-          setActionError("Remarks cannot be empty.");
-          setActionLoading(false);
-          return;
-        }
-        await api.saveRemarks(token, obs.id, editedRemarks.trim());
-        onClose();
-        onUpdated();
-      }
-    } catch (err) {
-      setActionError(err.message);
-    } finally {
-      setActionLoading(false);
+  const removeImage = (index) => {
+    setSelectedImages((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleSubmit = () => {
+    onSubmit({
+      school,
+      teacher_id: parseInt(teacherId, 10),
+      subject: subject || "General",
+      grade: grade || "N/A",
+      section: section || "N/A",
+      infrastructure_issues: infraIssues.trim(),
+      other_issues: otherIssues.trim(),
+      objective_observations: timestampedNotes.join("\n"),
+      auditor_remarks: auditorRemarks.trim(),
+      ...formScores,
+    });
+  };
+
+  const ratingStyle = (() => {
+    if (total >= 23) {
+      return { color: "#4ff57f", background: "rgba(79, 255, 127, 0.1)", borderColor: "rgba(79, 255, 127, 0.3)" };
     }
-  };
-
-  const title = obs ? obs.teacher.name : "Observation Detail";
-  const subtitle = obs
-    ? `${obs.school} Campus · ${obs.subject} · ${obs.grade} ${obs.section}`
-    : loading ? "Loading..." : "";
+    if (total >= 17) {
+      return { color: "var(--harvest-blue)", background: "rgba(41, 171, 226, 0.1)", borderColor: "rgba(41, 171, 226, 0.3)" };
+    }
+    if (total >= 12) {
+      return { color: "var(--harvest-amber)", background: "rgba(232, 160, 28, 0.1)", borderColor: "rgba(232, 160, 28, 0.3)" };
+    }
+    return { color: "var(--harvest-red)", background: "rgba(232, 64, 28, 0.1)", borderColor: "rgba(232, 64, 28, 0.3)" };
+  })();
 
   return (
     <>
-      <div className={`drawer-overlay${open ? " open" : ""}`} onClick={onClose} />
-      <div className={`drawer${open ? " open" : ""}`}>
-        <div className="drawer-header">
-          <div>
-            <h2 className="drawer-title">{title}</h2>
-            <div className="drawer-subtitle">{subtitle}</div>
+      <div className="form-layout">
+        <div>
+          <div className="section-title-wrap">
+            <div className="section-icon flex-center">&#127978;</div>
+            <h2>Session Details</h2>
           </div>
-          <button className="btn-close-drawer flex-center" onClick={onClose}>✕</button>
+          <div className="card">
+            <div className="form-group">
+              <label className="field-label">Location / School</label>
+              <select
+                value={school}
+                onChange={(e) => {
+                  setSchool(e.target.value);
+                  setTeacherId("");
+                  onSchoolChange(e.target.value);
+                }}
+              >
+                <option value="Kodathi">Kodathi</option>
+                <option value="Attibele">Attibele</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label className="field-label">
+                Select Teacher <span style={{ color: "var(--harvest-red)" }}>*</span>
+              </label>
+              <select value={teacherId} onChange={(e) => setTeacherId(e.target.value)}>
+                <option value="">-- Choose Teacher --</option>
+                {teachers.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name} ({t.location})
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="form-group">
+              <label className="field-label">Subject</label>
+              <select value={subject} onChange={(e) => setSubject(e.target.value)}>
+                <option value="">-- Choose Subject --</option>
+                {SUBJECTS.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="form-group">
+              <label className="field-label">Grade & Section</label>
+              <div className="grade-row">
+                <select value={grade} onChange={(e) => setGrade(e.target.value)}>
+                  <option value="">-- Grade --</option>
+                  {GRADES.map((g) => (
+                    <option key={g} value={g}>
+                      {g}
+                    </option>
+                  ))}
+                </select>
+                <select value={section} onChange={(e) => setSection(e.target.value)}>
+                  <option value="">-- Section --</option>
+                  {SECTIONS.map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div className="section-title-wrap">
+            <div className="section-icon flex-center">&#128065;</div>
+            <h2>Objective Observations</h2>
+          </div>
+          <div className="card">
+            <div className="remarks-list">
+              {timestampedNotes.length === 0 ? (
+                <div className="remark-item text-center" style={{ color: "var(--text-muted)" }}>
+                  No timestamped logs recorded yet.
+                </div>
+              ) : (
+                timestampedNotes.map((note, idx) => {
+                  const parts = note.split(" ");
+                  const time = parts[0];
+                  const text = parts.slice(1).join(" ");
+                  return (
+                    <div className="remark-item" key={idx}>
+                      <span className="remark-time">{time}</span>
+                      {text}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+            <div className="timestamper-row">
+              <textarea
+                placeholder="Add running log during the class..."
+                style={{ minHeight: "48px" }}
+                value={liveNote}
+                onChange={(e) => setLiveNote(e.target.value)}
+              />
+              <button type="button" className="btn-timestamp" onClick={addNote}>
+                Add Log
+              </button>
+            </div>
+          </div>
+
+          <div className="section-title-wrap">
+            <div className="section-icon flex-center">&#128203;</div>
+            <h2>Domain Parameters & Rubrics</h2>
+          </div>
+          <div className="card">
+            {RUBRICS.map((domain, idx) => (
+              <div key={domain.domain}>
+                <h3
+                  style={{
+                    color: "var(--harvest-blue)",
+                    marginBottom: "20px",
+                    marginTop: idx > 0 ? "30px" : 0,
+                    borderBottom: "1.5px solid rgba(41,171,226,0.2)",
+                    paddingBottom: "5px",
+                  }}
+                >
+                  {domain.domain}
+                </h3>
+                {domain.params.map((param) => (
+                  <RubricParameter
+                    key={param.key}
+                    param={param}
+                    score={formScores[param.key]}
+                    onSelect={(key, score) => setFormScores((prev) => ({ ...prev, [key]: score }))}
+                  />
+                ))}
+              </div>
+            ))}
+          </div>
         </div>
 
-        <div className="drawer-body">
-          {loading && <div className="msg"><span className="spinner" />Loading observation...</div>}
-          {loadError && <div className="error-banner">{loadError}</div>}
+        <div>
+          <div className="section-title-wrap">
+            <div className="section-icon flex-center">&#9888;</div>
+            <h2>Challenges</h2>
+          </div>
+          <div className="card">
+            <div className="form-group">
+              <label className="field-label">Infrastructure Issues</label>
+              <textarea
+                placeholder="Projector issues, audio setup lags..."
+                style={{ minHeight: "80px" }}
+                value={infraIssues}
+                onChange={(e) => setInfraIssues(e.target.value)}
+              />
+            </div>
+            <div className="form-group">
+              <label className="field-label">Other Issues / Cancellations</label>
+              <textarea
+                placeholder="Class delay, disruptions..."
+                style={{ minHeight: "80px" }}
+                value={otherIssues}
+                onChange={(e) => setOtherIssues(e.target.value)}
+              />
+            </div>
+            <div className="form-group">
+              <label className="field-label">Auditor / SME Remarks</label>
+              <textarea
+                placeholder="Overall remarks, suggestions, observations during the session..."
+                style={{ minHeight: "100px" }}
+                value={auditorRemarks}
+                onChange={(e) => setAuditorRemarks(e.target.value)}
+              />
+            </div>
+          </div>
 
-          {obs && (
-            <>
-              {/* Score + status header */}
-              <div className="drawer-score-row">
-                <div className="drawer-score-big">
-                  {isDraftEditable ? liveTotal : obs.overall_score}/28
-                </div>
-                <div className="drawer-score-meta">
-                  <div className={`drawer-rating-tag ${ratingClass(obs.rating)}`}>{obs.rating}</div>
-                  <div className="drawer-score-lbl">
-                    {formatDateStr(obs.date_time)} · Auditor: {obs.auditor.name}
-                  </div>
-                  {obs.is_draft && (
-                    <div style={{ marginTop: "4px" }}>
-                      <span className="tc-status-badge draft">DRAFT</span>
-                    </div>
-                  )}
+          <div className="section-title-wrap">
+            <div className="section-icon flex-center">&#128247;</div>
+            <h2>Audit Media (Images)</h2>
+          </div>
+          <div className="card">
+            <input
+              type="file"
+              id="imageFilesInput"
+              multiple
+              accept="image/*"
+              className="hidden"
+              onChange={handleImageSelection}
+            />
+            <div
+              className="image-upload-area flex-center"
+              onClick={() => document.getElementById("imageFilesInput").click()}
+            >
+              <div>
+                <div className="upload-icon">✦</div>
+                <div className="upload-txt">
+                  Click to select files
+                  <br />
+                  Supports multiple observation images
                 </div>
               </div>
-
-              {/* Domain parameter scores */}
-              <div className="drawer-section-label">Domain Parameters Rating</div>
-              <div className="drawer-params-box">
-                {isDraftEditable ? (
-                  // Editable score selectors
-                  <div className="hc-params-grid">
-                    {DRAWER_PARAM_LABELS.map(([key, label]) => (
-                      <div className="hc-param-item" key={key} style={{ justifyContent: "space-between" }}>
-                        <span>{label}</span>
-                        <ScoreSelect paramKey={key} value={editedScores[key] || 1} onChange={handleScoreChange} />
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="hc-params-grid">
-                    {DRAWER_PARAM_LABELS.map(([key, label]) => (
-                      <div className="hc-param-item" key={key}>
-                        <span>{label}</span>
-                        <span className="hc-param-val">{obs[key]}/4</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* Domain totals */}
-                <div className="domain-totals-row">
-                  <span className="domain-total-pill">D1: {isDraftEditable ? liveD1 : obs.domain1_score}/8</span>
-                  <span className="domain-total-pill">D2: {isDraftEditable ? liveD2 : obs.domain2_score}/4</span>
-                  <span className="domain-total-pill">D3: {isDraftEditable ? liveD3 : obs.domain3_score}/16</span>
-                  <span className="domain-total-pill total">Total: {isDraftEditable ? liveTotal : obs.overall_score}/28</span>
-                </div>
-
-                {/* Auditor remarks — shown to all, editable by draft creator */}
-                {(isDraftEditable || obs.auditor_remarks) && (
-                  <div style={{ marginTop: "12px" }}>
-                    <div className="hc-lbl" style={{ marginBottom: "6px" }}>Auditor / SME Remarks</div>
-                    {isDraftEditable ? (
-                      <textarea
-                        className="input-text"
-                        style={{ minHeight: "80px", fontSize: "13px" }}
-                        placeholder="Overall remarks and suggestions..."
-                        value={editedAuditorRemarks}
-                        onChange={(e) => setEditedAuditorRemarks(e.target.value)}
-                      />
-                    ) : (
-                      <div className="hc-val" style={{ fontSize: "13px" }}>
-                        {obs.auditor_remarks || <em style={{ color: "var(--text-muted)" }}>No remarks recorded.</em>}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Observation Details — hidden from teacher */}
-              {!isTeacher && (
-                <>
-                  <div className="drawer-section-label">Observation Details</div>
-
-                  <div className="info-card">
-                    <div className="hc-lbl">Objective Observations &amp; Timestamps</div>
-                    {isDraftEditable ? (
-                      <textarea
-                        className="input-text"
-                        style={{ minHeight: "140px", fontSize: "13px", lineHeight: 1.6 }}
-                        value={editedObjectiveObs}
-                        onChange={(e) => setEditedObjectiveObs(e.target.value)}
-                        placeholder="Add timestamped observation notes..."
-                      />
-                    ) : (
-                      <div className="hc-val" style={{ fontSize: "13px" }}>
-                        {obs.objective_observations ? (
-                          obs.objective_observations.split("\n").map((n, idx) => {
-                            const parts = n.split(" ");
-                            return (
-                              <div key={idx} style={{ marginBottom: "4px" }}>
-                                <span className="remark-time">{parts[0]}</span>
-                                {esc(parts.slice(1).join(" "))}
-                              </div>
-                            );
-                          })
-                        ) : (
-                          <em style={{ color: "var(--text-muted)" }}>No observation notes recorded.</em>
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  {obs.infrastructure_issues && (
-                    <div className="info-card">
-                      <div className="hc-lbl">Infrastructure Issues</div>
-                      <div className="hc-val" style={{ fontSize: "13px" }}>{obs.infrastructure_issues}</div>
-                    </div>
-                  )}
-
-                  {obs.other_issues && (
-                    <div className="info-card">
-                      <div className="hc-lbl">Other Issues</div>
-                      <div className="hc-val" style={{ fontSize: "13px" }}>{obs.other_issues}</div>
-                    </div>
-                  )}
-
-                  {obs.images?.length > 0 && (
-                    <div className="info-card">
-                      <div className="hc-lbl">Observation Images</div>
-                      <div className="hc-images-grid">
-                        {obs.images.map((img) => (
-                          <div className="hc-img-item" key={img.id}>
-                            <img
-                              src={img.image_path}
-                              alt="Observation"
-                              onClick={() => window.open(img.image_path, "_blank")}
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </>
-              )}
-
-              {/* AI feedback */}
-              <div className="info-card">
-                <div className="hc-lbl">AI-Generated Feedback for Teacher</div>
-                {isDraftEditable ? (
-                  <textarea
-                    className="input-text"
-                    style={{ minHeight: "160px", fontSize: "13px", lineHeight: 1.6 }}
-                    value={editedFeedback}
-                    onChange={(e) => setEditedFeedback(e.target.value)}
-                  />
-                ) : (
-                  <div className="hc-val ai-box">
-                    {obs.ai_feedback || "No AI feedback generated yet."}
-                  </div>
-                )}
-              </div>
-
-              {/* Neutral person acknowledgment — only for SME drafts */}
-              {isDraftEditable && isSME && (
-                <div className="info-card" style={{ border: smeAckComplete ? "1px solid var(--harvest-green)" : "1px solid var(--border)" }}>
-                  <div className="hc-lbl" style={{ marginBottom: "10px" }}>Mutual Agreement Acknowledgment</div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "12px" }}>
-                    <div className="form-group" style={{ margin: 0 }}>
-                      <label className="field-label">Witness Name</label>
-                      <input
-                        type="text"
-                        className="input-text"
-                        placeholder="Full name"
-                        value={witnessName}
-                        onChange={(e) => setWitnessName(e.target.value)}
-                      />
-                    </div>
-                    <div className="form-group" style={{ margin: 0 }}>
-                      <label className="field-label">Designation</label>
-                      <input
-                        type="text"
-                        className="input-text"
-                        placeholder="e.g. Vice Principal"
-                        value={witnessDesignation}
-                        onChange={(e) => setWitnessDesignation(e.target.value)}
-                      />
-                    </div>
-                  </div>
-                  <label style={{ display: "flex", alignItems: "flex-start", gap: "10px", cursor: "pointer" }}>
-                    <input
-                      type="checkbox"
-                      checked={acknowledged}
-                      onChange={(e) => setAcknowledged(e.target.checked)}
-                      style={{ marginTop: "3px", width: "16px", height: "16px", cursor: "pointer" }}
-                    />
-                    <span style={{ fontSize: "13px", color: "var(--text-white)", lineHeight: 1.6 }}>
-                      I confirm that this observation report has been reviewed and mutually agreed upon by the SME and the teacher in my presence. Both parties have acknowledged the feedback and domain scores.
-                    </span>
-                  </label>
-                  {!smeAckComplete && (
-                    <div style={{ fontSize: "11px", color: "var(--harvest-amber)", marginTop: "8px" }}>
-                      Please fill in your name, designation and check the box to enable finalisation.
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Teacher remarks */}
-              <div className="info-card">
-                <div className="hc-lbl">Teacher&apos;s Remarks</div>
-                {isTeacherRemarking ? (
-                  <textarea
-                    className="input-text"
-                    placeholder="Write your remarks or reflections..."
-                    style={{ minHeight: "80px", fontSize: "13px" }}
-                    value={editedRemarks}
-                    onChange={(e) => setEditedRemarks(e.target.value)}
-                  />
-                ) : (
-                  <div className="hc-val teacher-box">
-                    {obs.teacher_remarks || "No teacher response submitted yet."}
-                  </div>
-                )}
-              </div>
-
-              {/* Action panel */}
-              {showActionPanel && (
-                <div className="drawer-draft-actions">
-                  {actionError && (
-                    <div className="error-banner" style={{ marginBottom: "12px" }}>{actionError}</div>
-                  )}
+            </div>
+            <div className="upload-preview-grid">
+              {selectedImages.map((file, index) => (
+                <div className="preview-img-wrapper" key={`${file.name}-${index}`}>
+                  <img src={URL.createObjectURL(file)} alt={file.name} />
                   <button
-                    className="btn-submit-large"
-                    style={{ width: "100%", opacity: finalizeDisabled ? 0.5 : 1 }}
-                    disabled={finalizeDisabled}
-                    onClick={handleAction}
+                    type="button"
+                    className="preview-remove-btn flex-center"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      removeImage(index);
+                    }}
                   >
-                    {actionLoading
-                      ? <><span className="spinner" />Processing...</>
-                      : actionLabel}
+                    ✕
                   </button>
-                  {isDraftEditable && isSME && !smeAckComplete && (
-                    <div style={{ textAlign: "center", fontSize: "12px", color: "var(--text-muted)", marginTop: "8px" }}>
-                      Complete the acknowledgment section above to enable this button.
-                    </div>
-                  )}
                 </div>
-              )}
-            </>
-          )}
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="live-strip">
+        <div className="live-strip-inner">
+          <div className="live-top">
+            <div className="live-score-display">
+              <div className="live-score-big">{total}</div>
+              <div className="live-score-denom">/ 28</div>
+            </div>
+            <div className="live-rating-txt" style={ratingStyle}>
+              {rating}
+            </div>
+          </div>
+          <div className="live-progress-bars">
+            <div className="lbar-col">
+              <div className="lbar-lbl">D1</div>
+              <div className="lbar-val">{d1}/8</div>
+              <div className="lbar-track">
+                <div className="lbar-fill" style={{ width: `${(d1 / 8) * 100}%` }}></div>
+              </div>
+            </div>
+            <div className="lbar-col">
+              <div className="lbar-lbl">D2</div>
+              <div className="lbar-val">{d2}/4</div>
+              <div className="lbar-track">
+                <div className="lbar-fill" style={{ width: `${(d2 / 4) * 100}%` }}></div>
+              </div>
+            </div>
+            <div className="lbar-col">
+              <div className="lbar-lbl">D3</div>
+              <div className="lbar-val">{d3}/16</div>
+              <div className="lbar-track">
+                <div className="lbar-fill" style={{ width: `${(d3 / 16) * 100}%` }}></div>
+              </div>
+            </div>
+            <div className="lbar-col">
+              <div className="lbar-lbl">Total</div>
+              <div className="lbar-val">{total}/28</div>
+              <div className="lbar-track">
+                <div className="lbar-fill" style={{ width: `${(total / 28) * 100}%` }}></div>
+              </div>
+            </div>
+          </div>
+          {submitError && <div className="error-banner" style={{ marginBottom: "10px" }}>{submitError}</div>}
+          <button className="btn-submit-audit" disabled={submitting} onClick={handleSubmit}>
+            {submitting ? (
+              <>
+                <span className="spinner"></span>Generating AI feedback and saving draft...
+              </>
+            ) : (
+              "Save Observation Report as Draft"
+            )}
+          </button>
         </div>
       </div>
     </>
   );
 }
+
+export { EMPTY_SCORES };
