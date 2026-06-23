@@ -18,7 +18,7 @@ class UserOut(UserBase):
     id: int
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class UserMinimal(BaseModel):
     id: int
@@ -29,7 +29,7 @@ class UserMinimal(BaseModel):
     location: str
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class LoginRequest(BaseModel):
     email: EmailStr
@@ -62,7 +62,7 @@ class ObservationImageOut(ObservationImageBase):
     uploaded_at: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 # --- OBSERVATION SCHEMAS ---
 class ObservationBase(BaseModel):
@@ -80,6 +80,7 @@ class ObservationBase(BaseModel):
     infrastructure_issues: Optional[str] = ""
     other_issues: Optional[str] = ""
     objective_observations: Optional[str] = ""
+    auditor_remarks: Optional[str] = ""
 
 class ObservationCreate(ObservationBase):
     teacher_id: int
@@ -87,6 +88,14 @@ class ObservationCreate(ObservationBase):
 class ObservationDraftUpdate(BaseModel):
     objective_observations: str
     ai_feedback: str
+    auditor_remarks: Optional[str] = ""
+    p11: Optional[int] = None
+    p12: Optional[int] = None
+    p21: Optional[int] = None
+    p31: Optional[int] = None
+    p32: Optional[int] = None
+    p33: Optional[int] = None
+    p34: Optional[int] = None
 
 class ObservationTeacherRemarks(BaseModel):
     teacher_remarks: str
@@ -104,6 +113,7 @@ class ObservationOut(ObservationBase):
     rating: str
     teacher_remarks: Optional[str] = None
     ai_feedback: Optional[str] = None
+    auditor_remarks: Optional[str] = None
     is_draft: bool
     email_sent: bool
     remarks_saved: bool
@@ -113,7 +123,7 @@ class ObservationOut(ObservationBase):
     images: List[ObservationImageOut] = []
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class TeacherSummary(BaseModel):
     teacher_id: int
@@ -127,7 +137,7 @@ class TeacherSummary(BaseModel):
     latest_auditor_name: str = ""
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class DashboardData(BaseModel):
     teachers: List[TeacherSummary]
