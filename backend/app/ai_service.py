@@ -52,13 +52,13 @@ def _rule_based_feedback(payload: dict) -> str:
     fb += f"Overall Rating: {rating} ({os_score}/28)\n\n"
 
     if strengths:
-        fb += "STRENGTHS OBSERVED:\n"
+        fb += "GLOWS (What went well):\n"
         for idx, s in enumerate(strengths, 1):
             fb += f"{idx}. The teacher {s}.\n"
         fb += "\n"
 
     if improvements:
-        fb += "AREAS FOR DEVELOPMENT:\n"
+        fb += "GROWS (What could have been better):\n"
         for idx, imp in enumerate(improvements, 1):
             fb += f"{idx}. {imp[0].upper() + imp[1:]}.\n"
         fb += "\n"
