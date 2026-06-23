@@ -927,6 +927,25 @@ select option {
   color: var(--text-gray);
   margin-top: 2px;
 }
+.btn-print {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  background: rgba(41, 171, 226, 0.12);
+  border: 1px solid rgba(41, 171, 226, 0.4);
+  border-radius: 6px;
+  color: var(--harvest-blue);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition-fast);
+  white-space: nowrap;
+}
+.btn-print:hover {
+  background: rgba(41, 171, 226, 0.22);
+  border-color: var(--harvest-blue);
+}
 .btn-close-drawer {
   width: 32px;
   height: 32px;
