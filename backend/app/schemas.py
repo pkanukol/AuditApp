@@ -9,7 +9,6 @@ class UserBase(BaseModel):
     designation: str
     role: str  # 'teacher', 'auditor', 'sme'
     location: str  # 'Kodathi', 'Attibele', 'Both'
-    sme_id: Optional[int] = None
 
 class UserCreate(UserBase):
     password: str
