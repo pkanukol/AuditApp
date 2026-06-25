@@ -123,11 +123,11 @@ def get_dashboard_teachers(db: Session, location: str, sme_user_id: int = None):
     # Filter observations by location
     obs_query = db.query(models.Observation).filter(models.Observation.school == location)
     
-    # If filtered by SME, join User table to filter teachers assigned to that SME
+    # If filtered by SME, use the teacher_sme join table (many-to-many)
     if sme_user_id:
         obs_query = obs_query.join(
-            models.User, models.Observation.teacher_id == models.User.id
-        ).filter(models.User.sme_id == sme_user_id)
+            models.TeacherSME, models.Observation.teacher_id == models.TeacherSME.teacher_id
+        ).filter(models.TeacherSME.sme_id == sme_user_id)
         
     observations = obs_query.all()
     
