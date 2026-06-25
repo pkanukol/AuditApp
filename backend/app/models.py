@@ -1,7 +1,21 @@
 import datetime
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Text, ForeignKey
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Text, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import relationship
 from .database import Base
+
+
+class TeacherSME(Base):
+    """Many-to-many: a teacher can be observed by multiple SMEs."""
+    __tablename__ = "teacher_sme"
+    __table_args__ = (UniqueConstraint("teacher_id", "sme_id", name="uq_teacher_sme"),)
+
+    id = Column(Integer, primary_key=True, index=True)
+    teacher_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    sme_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+
+    teacher = relationship("User", foreign_keys=[teacher_id], backref="sme_assignments")
+    sme = relationship("User", foreign_keys=[sme_id], backref="assigned_teachers")
+
 
 class User(Base):
     __tablename__ = "users"
@@ -13,10 +27,6 @@ class User(Base):
     designation = Column(String, nullable=False)
     role = Column(String, nullable=False)  # 'teacher', 'auditor', 'sme'
     location = Column(String, nullable=False)  # 'Kodathi', 'Attibele', 'Both'
-    sme_id = Column(Integer, ForeignKey("users.id"), nullable=True)
-
-    # Relationships
-    sme = relationship("User", remote_side=[id], backref="assigned_teachers")
 
 
 class Observation(Base):
