@@ -77,9 +77,12 @@ async def get_teachers(
     if current_user.role == "auditor":
         query = db.query(models.User).filter(models.User.role == "teacher")
     elif current_user.role == "sme":
+        assigned_ids = db.query(models.TeacherSME.teacher_id).filter(
+            models.TeacherSME.sme_id == current_user.id
+        ).subquery()
         query = db.query(models.User).filter(
             models.User.role == "teacher",
-            models.User.sme_id == current_user.id,
+            models.User.id.in_(assigned_ids),
         )
     else:
         raise HTTPException(status_code=403, detail="Unauthorized role")
@@ -227,8 +230,10 @@ async def get_single_observation(
     if current_user.role == "teacher" and obs.teacher_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
     if current_user.role == "sme":
-        teacher = crud.get_user_by_id(db, obs.teacher_id)
-        if not teacher or teacher.sme_id != current_user.id:
+        assigned = db.query(models.TeacherSME).filter_by(
+            teacher_id=obs.teacher_id, sme_id=current_user.id
+        ).first()
+        if not assigned:
             raise HTTPException(status_code=403, detail="Access denied")
     return obs
 
@@ -246,8 +251,10 @@ async def get_teacher_observations(
     elif current_user.role == "auditor":
         return crud.get_teacher_full_history(db, teacher_id)
     elif current_user.role == "sme":
-        teacher = crud.get_user_by_id(db, teacher_id)
-        if not teacher or teacher.sme_id != current_user.id:
+        assigned = db.query(models.TeacherSME).filter_by(
+            teacher_id=teacher_id, sme_id=current_user.id
+        ).first()
+        if not assigned:
             raise HTTPException(status_code=403, detail="Unauthorized access for this teacher")
         return crud.get_teacher_full_history(db, teacher_id)
     raise HTTPException(status_code=403, detail="Unauthorized role")
@@ -272,8 +279,12 @@ async def compare_teacher_progress(
     teacher = crud.get_user_by_id(db, req.teacher_id)
     if not teacher:
         raise HTTPException(status_code=404, detail="Teacher not found")
-    if current_user.role == "sme" and teacher.sme_id != current_user.id:
-        raise HTTPException(status_code=403, detail="This teacher is not assigned to you")
+    if current_user.role == "sme":
+        assigned = db.query(models.TeacherSME).filter_by(
+            teacher_id=req.teacher_id, sme_id=current_user.id
+        ).first()
+        if not assigned:
+            raise HTTPException(status_code=403, detail="This teacher is not assigned to you")
 
     history = db.query(models.Observation).filter(
         models.Observation.teacher_id == req.teacher_id,
@@ -334,9 +345,10 @@ async def get_audit_list(
 ):
     obs_query = db.query(models.Observation).filter(models.Observation.school == location)
     if current_user.role == "sme":
-        obs_query = obs_query.join(
-            models.User, models.Observation.teacher_id == models.User.id
-        ).filter(models.User.sme_id == current_user.id)
+        assigned_ids = db.query(models.TeacherSME.teacher_id).filter(
+            models.TeacherSME.sme_id == current_user.id
+        ).subquery()
+        obs_query = obs_query.filter(models.Observation.teacher_id.in_(assigned_ids))
     observations = obs_query.order_by(models.Observation.date_time.desc()).all()
     return [
         {
@@ -372,9 +384,10 @@ async def get_subject_summary(
         models.Observation.is_draft == False,
     )
     if current_user.role == "sme":
-        obs_query = obs_query.join(
-            models.User, models.Observation.teacher_id == models.User.id
-        ).filter(models.User.sme_id == current_user.id)
+        assigned_ids = db.query(models.TeacherSME.teacher_id).filter(
+            models.TeacherSME.sme_id == current_user.id
+        ).subquery()
+        obs_query = obs_query.filter(models.Observation.teacher_id.in_(assigned_ids))
     observations = obs_query.order_by(models.Observation.date_time.desc()).all()
 
     teacher_data = {}
