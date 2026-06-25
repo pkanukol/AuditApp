@@ -1,63 +1,64 @@
-import asyncio
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-from email.utils import formataddr
 import logging
+import httpx
 from .config import settings
 
 logger = logging.getLogger(__name__)
 
-def _send_smtp_blocking(to_email: str, subject: str, body_text: str, body_html: str,
-                        from_display: str = "", reply_to: str = "") -> bool:
-    sender = formataddr((from_display or "Harvest AuditApp", settings.SMTP_FROM_EMAIL))
+RESEND_URL = "https://api.resend.com/emails"
+
+
+async def _send_resend(to_email: str, subject: str, body_text: str, body_html: str,
+                       from_display: str = "", reply_to: str = "") -> bool:
+    from_addr = f"{from_display or 'Harvest AuditApp'} <{settings.RESEND_FROM_EMAIL}>"
+
     print(f"\n{'='*60}", flush=True)
-    print(f"EMAIL TRIGGERED", flush=True)
-    print(f"  From    : {sender}", flush=True)
-    print(f"  To      : {to_email}", flush=True)
-    if reply_to:
-        print(f"  Reply-To: {reply_to}", flush=True)
-    print(f"  Subject : {subject}", flush=True)
+    print(f"EMAIL TRIGGERED (Resend)", flush=True)
+    print(f"  From   : {from_addr}", flush=True)
+    print(f"  To     : {to_email}", flush=True)
+    print(f"  Subject: {subject}", flush=True)
     print(f"{'='*60}\n", flush=True)
 
-    if not settings.SMTP_USERNAME or not settings.SMTP_PASSWORD or not settings.SMTP_FROM_EMAIL:
-        print("  WARNING: SMTP credentials not configured - email simulated only.", flush=True)
+    if not settings.RESEND_API_KEY or not settings.RESEND_FROM_EMAIL:
+        print("  WARNING: Resend credentials not configured — email simulated only.", flush=True)
         print(f"  Body preview:\n{body_text[:300]}\n", flush=True)
         return True
+
+    payload = {
+        "from": from_addr,
+        "to": [to_email],
+        "subject": subject,
+        "text": body_text,
+        "html": body_html,
+    }
+    if reply_to:
+        payload["reply_to"] = reply_to
+
     try:
-        msg = MIMEMultipart("alternative")
-        msg["Subject"] = subject
-        msg["From"] = sender
-        msg["To"] = to_email
-        if reply_to:
-            msg["Reply-To"] = reply_to
-        msg.attach(MIMEText(body_text, "plain"))
-        msg.attach(MIMEText(body_html, "html"))
-        if settings.SMTP_PORT == 465:
-            server = smtplib.SMTP_SSL(settings.SMTP_HOST, settings.SMTP_PORT)
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.post(
+                RESEND_URL,
+                headers={"Authorization": f"Bearer {settings.RESEND_API_KEY}",
+                         "Content-Type": "application/json"},
+                json=payload,
+            )
+        if resp.status_code in (200, 201):
+            print(f"  SUCCESS: Email sent to {to_email}\n", flush=True)
+            logger.info(f"Email sent to {to_email}")
+            return True
         else:
-            server = smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT)
-            server.starttls()
-        server.login(settings.SMTP_USERNAME, settings.SMTP_PASSWORD)
-        server.sendmail(settings.SMTP_FROM_EMAIL, to_email, msg.as_string())
-        server.quit()
-        print(f"  SUCCESS: Email sent to {to_email}\n", flush=True)
-        logger.info(f"Email sent to {to_email}")
-        return True
+            print(f"  RESEND ERROR {resp.status_code}: {resp.text}\n", flush=True)
+            logger.error(f"Resend error {resp.status_code} for {to_email}: {resp.text}")
+            return False
     except Exception as e:
-        print(f"  SMTP ERROR: {e}\n", flush=True)
+        print(f"  EMAIL ERROR: {e}\n", flush=True)
         logger.error(f"Failed to send email to {to_email}: {e}")
         return False
 
 
-async def send_smtp_email(to_email: str, subject: str, body_text: str, body_html: str,
-                          from_display: str = "", reply_to: str = ""):
-    return await asyncio.to_thread(_send_smtp_blocking, to_email, subject, body_text, body_html,
-                                   from_display, reply_to)
-
-async def send_audit_notification(teacher_email: str, teacher_name: str, auditor_name: str, auditor_email: str, school: str, grade: str, app_url: str):
+async def send_audit_notification(teacher_email: str, teacher_name: str, auditor_name: str,
+                                  auditor_email: str, school: str, grade: str, app_url: str):
     subject = f"{school} | Audit Report of {grade or 'your class'}"
-    
+
     body_text = (
         f"Dear {teacher_name or 'Teacher'},\n\n"
         f"Your classroom observation report has been reviewed and finalised by {auditor_name or 'your auditor'}.\n\n"
@@ -87,13 +88,15 @@ async def send_audit_notification(teacher_email: str, teacher_name: str, auditor
         <div style="background:#f0f7f0;padding:10px 22px;font-size:10px;color:#888;text-align:center;border-top:1px solid #d4e4d4;">Harvest International School &mdash; Academic Quality Team</div>
     </div>
     """
-    return await send_smtp_email(teacher_email, subject, body_text, body_html,
-                                 from_display=f"{auditor_name} via Harvest AuditApp",
-                                 reply_to=auditor_email)
+    return await _send_resend(teacher_email, subject, body_text, body_html,
+                              from_display=f"{auditor_name} via Harvest AuditApp",
+                              reply_to=auditor_email)
 
-async def send_remarks_notification(auditor_email: str, auditor_name: str, teacher_name: str, teacher_email: str, school: str, grade: str, app_url: str):
+
+async def send_remarks_notification(auditor_email: str, auditor_name: str, teacher_name: str,
+                                    teacher_email: str, school: str, grade: str, app_url: str):
     subject = f"Audit Response | Remarks submitted by {teacher_name or 'Teacher'}"
-    
+
     body_text = (
         f"Dear {auditor_name or 'Auditor'},\n\n"
         f"The teacher {teacher_name or 'Teacher'} has submitted remarks for your classroom observation.\n\n"
@@ -123,6 +126,6 @@ async def send_remarks_notification(auditor_email: str, auditor_name: str, teach
         <div style="background:#f0f7f0;padding:10px 22px;font-size:10px;color:#888;text-align:center;border-top:1px solid #d4e4d4;">Harvest International School &mdash; Academic Quality Team</div>
     </div>
     """
-    return await send_smtp_email(auditor_email, subject, body_text, body_html,
-                                 from_display=f"{teacher_name} via Harvest AuditApp",
-                                 reply_to=teacher_email)
+    return await _send_resend(auditor_email, subject, body_text, body_html,
+                              from_display=f"{teacher_name} via Harvest AuditApp",
+                              reply_to=teacher_email)
