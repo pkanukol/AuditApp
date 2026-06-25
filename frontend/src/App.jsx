@@ -185,6 +185,7 @@ export default function App() {
             {view === "dashboard" && user.role !== "teacher" && (
               <Dashboard
                 token={token}
+                user={user}
                 location={location}
                 onLocationChange={setLocation}
                 onNewObservation={() => { resetForm(); setView("form"); }}
