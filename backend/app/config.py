@@ -7,6 +7,7 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440
 
     ANTHROPIC_API_KEY: str = ""
+    APP_URL: str = "https://harvest-ta.onrender.com"
 
     RESEND_API_KEY: str = ""
     RESEND_FROM_EMAIL: str = ""
