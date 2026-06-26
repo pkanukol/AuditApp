@@ -180,7 +180,7 @@ async def finalise_observation(
         auditor_email=finalised_obs.auditor.email,
         school=finalised_obs.school,
         grade=f"{finalised_obs.grade} {finalised_obs.section}",
-        app_url="http://localhost:5173/?page=teacher",
+        app_url=f"{settings.APP_URL}/?page=teacher",
     )
     finalised_obs.email_sent = True
     db.commit()
@@ -213,7 +213,7 @@ async def save_remarks(
         teacher_email=current_user.email,
         school=updated_obs.school,
         grade=f"{updated_obs.grade} {updated_obs.section}",
-        app_url="http://localhost:5173/?page=dashboard",
+        app_url=f"{settings.APP_URL}/?page=dashboard",
     )
     return updated_obs
 
