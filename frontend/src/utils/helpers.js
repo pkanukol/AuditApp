@@ -66,16 +66,16 @@ export const EMPTY_SCORES = {
 };
 
 export const SUBJECTS = [
-  "Mathematics",
+  "Biology",
+  "Chemistry",
+  "Computer Science",
   "English",
+  "Hindi",
+  "Kannada",
+  "Mathematics",
+  "Physics",
   "Science",
   "Social Science",
-  "Biology",
-  "Physics",
-  "Chemistry",
-  "Kannada",
-  "Hindi",
-  "Computer Science",
 ];
 
 export const GRADES = Array.from({ length: 10 }, (_, i) => `Grade ${i + 1}`);
