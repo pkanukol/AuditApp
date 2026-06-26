@@ -75,7 +75,16 @@ async def get_teachers(
     current_user: models.User = Depends(auth.get_current_user),
 ):
     if current_user.role == "auditor":
-        query = db.query(models.User).filter(models.User.role == "teacher")
+        from sqlalchemy import or_, and_
+        query = db.query(models.User).filter(
+            or_(
+                models.User.role == "teacher",
+                and_(
+                    models.User.role == "sme",
+                    models.User.designation != "Subject Matter Expert",
+                )
+            )
+        )
     elif current_user.role == "sme":
         assigned_ids = db.query(models.TeacherSME.teacher_id).filter(
             models.TeacherSME.sme_id == current_user.id
@@ -92,7 +101,7 @@ async def get_teachers(
         query = query.filter(
             or_(models.User.location == location, models.User.location == "Both")
         )
-    return query.all()
+    return query.order_by(models.User.name).all()
 
 
 # --- OBSERVATION ROUTES ---
